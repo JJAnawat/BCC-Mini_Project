@@ -1,0 +1,95 @@
+{
+  "eeg_channel_order": [
+    "Fp1",
+    "AF3",
+    "F3",
+    "F7",
+    "FC5",
+    "FC1",
+    "C3",
+    "T7",
+    "CP5",
+    "CP1",
+    "P3",
+    "P7",
+    "PO3",
+    "O1",
+    "Oz",
+    "Pz",
+    "Fp2",
+    "AF4",
+    "Fz",
+    "F4",
+    "F8",
+    "FC6",
+    "FC2",
+    "Cz",
+    "C4",
+    "T8",
+    "CP6",
+    "CP2",
+    "P4",
+    "P8",
+    "PO4",
+    "O2"
+  ],
+  "symmetric_pairs": [
+    {
+      "left": "Fp1",
+      "right": "Fp2"
+    },
+    {
+      "left": "AF3",
+      "right": "AF4"
+    },
+    {
+      "left": "F3",
+      "right": "F4"
+    },
+    {
+      "left": "F7",
+      "right": "F8"
+    },
+    {
+      "left": "FC5",
+      "right": "FC6"
+    },
+    {
+      "left": "FC1",
+      "right": "FC2"
+    },
+    {
+      "left": "C3",
+      "right": "C4"
+    },
+    {
+      "left": "T7",
+      "right": "T8"
+    },
+    {
+      "left": "CP5",
+      "right": "CP6"
+    },
+    {
+      "left": "CP1",
+      "right": "CP2"
+    },
+    {
+      "left": "P3",
+      "right": "P4"
+    },
+    {
+      "left": "P7",
+      "right": "P8"
+    },
+    {
+      "left": "PO3",
+      "right": "PO4"
+    },
+    {
+      "left": "O1",
+      "right": "O2"
+    }
+  ],
+  "note": "Channel order is the documented DEAP/Biosemi 32-channel Geneva order, assumed (not verified against in-file metadata, since none ships with this dataset copy)."
+}

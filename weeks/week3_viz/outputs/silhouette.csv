@@ -1,0 +1,11 @@
+domain,normalization,silhouette_subject,silhouette_quadrant
+de,raw (pooled z-score),0.606,-0.011
+de,per-subject z-score,-0.049,-0.03
+hjorth,raw (pooled z-score),0.274,-0.013
+hjorth,per-subject z-score,-0.074,-0.03
+asymmetry,raw (pooled z-score),0.708,-0.013
+asymmetry,per-subject z-score,-0.015,-0.013
+mse,raw (pooled z-score),0.24,-0.028
+mse,per-subject z-score,-0.033,-0.014
+microstates,raw (pooled z-score),0.275,-0.02
+microstates,per-subject z-score,-0.173,-0.012

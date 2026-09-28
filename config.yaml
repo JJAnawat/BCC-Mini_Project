@@ -1,0 +1,100 @@
+# Locked EDA-derived preprocessing config -- Week 1 sign-off.
+# Every downstream feature-extraction / classification script must import
+# these values (see weeks/week1_eda/config.py for a loader) instead of
+# redefining them, so nothing can silently drift from the EDA decisions
+# documented here and in weeks/week1_eda/outputs/EDA_SUMMARY.md.
+
+paths:
+  data_dir: deap-dataset/data_preprocessed_python
+  ratings_xls: deap-dataset/Metadata/participant_ratings.xls
+  eda_outputs: weeks/week1_eda/outputs
+
+dataset:
+  n_subjects: 32
+  n_trials: 40
+  n_eeg_channels: 32
+  n_samples_per_trial: 8064
+  fs_hz: 128
+  baseline_sec: 3
+  stimulus_sec: 60
+
+labels:
+  source: participant_ratings.xls  # NOT the .dat files' 'labels' array
+  reason: >
+    .dat labels[:,0:2] (valence, arousal) are corrupted on ~34% of trials
+    (439/1280): for those trials dat_value == 9 - true_value exactly, and
+    dat valence/arousal fall outside the documented 1-9 range (down to 0.0)
+    while participant_ratings.xls never does. Dominance/Liking match the
+    .dat file exactly on every trial, so only valence/arousal needed
+    replacing.
+  join_keys: [Participant_id, Experiment_id]
+  join_note: "sort xls rows by Experiment_id per subject to match .dat trial order"
+  binarize_threshold: 5.0
+  binarize_rule: ">=threshold -> high, <threshold -> low"
+
+quadrant_balance:
+  # weeks/week1_eda/outputs/task2b_quadrant_pooled.csv, pooled across all 1280 trials
+  HVHA_pct: 35.8
+  HVLA_pct: 20.8
+  LVHA_pct: 23.1
+  LVLA_pct: 20.3
+  max_min_ratio: 1.76
+  note: >
+    Moderate imbalance (<2x), not severe -- use class-weighted loss /
+    macro-F1 for quadrant classification; full resampling (SMOTE etc.)
+    is not obviously required but is worth an ablation later.
+  known_degenerate_subjects:
+    - subject_id: 23
+      issue: >
+        Zero trials in the LVHA quadrant. In LOSO CV, the fold that holds
+        out subject 23 cannot evaluate LVHA at all for that fold -- expect
+        NaN/undefined recall for that class in that fold; handle in the
+        eval script (skip or report separately), don't silently average it in.
+
+channels:
+  order: [Fp1, AF3, F3, F7, FC5, FC1, C3, T7, CP5, CP1, P3, P7, PO3, O1, Oz, Pz,
+          Fp2, AF4, Fz, F4, F8, FC6, FC2, Cz, C4, T8, CP6, CP2, P4, P8, PO4, O2]
+  order_note: >
+    Documented DEAP/Biosemi 32-channel Geneva order, assumed -- not verified
+    against in-file metadata (none ships with this dataset copy).
+  symmetric_pairs_file: weeks/week1_eda/outputs/symmetric_pairs.json
+
+subjects:
+  face_video_gap_ids: [3, 5, 11, 14]
+  face_video_gap_note: >
+    Known face-video recording gap for these 4 participants. Confirmed to
+    NOT affect EEG -- all four have 40/40 EEG trials present.
+  alpha_power_outliers: [11, 22]
+  subject_11_decision:
+    action: keep_subject_and_all_channels
+    evidence: >
+      Direct raw-waveform inspection
+      (weeks/week1_eda/outputs/task3_waveform_s11_trial0.png)
+      shows F7 spiking to ~1000uV, 5-10x the simultaneous amplitude on
+      Fp1/Fp2/Oz/Cz at the same timestamps -- an electrode-level artifact
+      localized to F7, not a whole-scalp event. PSD confirms F7 dominates
+      subject 11's broadband/alpha-band power and subject 11 shows no clean
+      physiological alpha peak (contrast weeks/week1_eda/outputs/task3_psd_s11.png
+      against weeks/week1_eda/outputs/task3_psd_s01.png). No per-(subject,
+      channel) exclusion is applied -- subject 11 and channel F7 are both
+      kept as-is; flagged here for awareness if it behaves as an outlier
+      downstream.
+  subject_22_decision:
+    action: keep_as_is_monitor
+    evidence: >
+      Alpha-power outlier (Task 4) but no channel-level amplitude-outlier
+      flag in Task 3 -- no single reproducible bad-channel cause found.
+      Kept in the dataset as-is; revisit if it behaves as an outlier again
+      after feature extraction.
+
+windowing:
+  strategy: non_overlapping
+  window_sec: 4
+  window_samples: 512          # 4s * 128Hz
+  drop_baseline_sec: 3         # first 384 samples of each 8064-sample trial
+  n_windows_per_trial: 15      # (8064 - 384) / 512, exact -- no partial window
+  bands_hz:
+    theta: [4, 8]
+    alpha: [8, 13]
+    beta: [13, 30]
+    gamma: [30, 45]
