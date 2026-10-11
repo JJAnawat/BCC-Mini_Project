@@ -1,13 +1,12 @@
 # Locked EDA-derived preprocessing config -- Week 1 sign-off.
 # Every downstream feature-extraction / classification script must import
-# these values (see weeks/week1_eda/config.py for a loader) instead of
+# these values (see src/bcc/config.py for a loader) instead of
 # redefining them, so nothing can silently drift from the EDA decisions
-# documented here and in weeks/week1_eda/outputs/EDA_SUMMARY.md.
+# documented here and in reports/EDA_SUMMARY.md.
 
 paths:
   data_dir: deap-dataset/data_preprocessed_python
   ratings_xls: deap-dataset/Metadata/participant_ratings.xls
-  eda_outputs: weeks/week1_eda/outputs
 
 dataset:
   n_subjects: 32
@@ -33,7 +32,7 @@ labels:
   binarize_rule: ">=threshold -> high, <threshold -> low"
 
 quadrant_balance:
-  # weeks/week1_eda/outputs/task2b_quadrant_pooled.csv, pooled across all 1280 trials
+  # outputs/eda/task2b_quadrant_pooled.csv, pooled across all 1280 trials
   HVHA_pct: 35.8
   HVLA_pct: 20.8
   LVHA_pct: 23.1
@@ -57,7 +56,7 @@ channels:
   order_note: >
     Documented DEAP/Biosemi 32-channel Geneva order, assumed -- not verified
     against in-file metadata (none ships with this dataset copy).
-  symmetric_pairs_file: weeks/week1_eda/outputs/symmetric_pairs.json
+  symmetric_pairs_file: outputs/eda/symmetric_pairs.json
 
 subjects:
   face_video_gap_ids: [3, 5, 11, 14]
@@ -69,13 +68,13 @@ subjects:
     action: keep_subject_and_all_channels
     evidence: >
       Direct raw-waveform inspection
-      (weeks/week1_eda/outputs/task3_waveform_s11_trial0.png)
+      (outputs/eda/task3_waveform_s11_trial0.png)
       shows F7 spiking to ~1000uV, 5-10x the simultaneous amplitude on
       Fp1/Fp2/Oz/Cz at the same timestamps -- an electrode-level artifact
       localized to F7, not a whole-scalp event. PSD confirms F7 dominates
       subject 11's broadband/alpha-band power and subject 11 shows no clean
-      physiological alpha peak (contrast weeks/week1_eda/outputs/task3_psd_s11.png
-      against weeks/week1_eda/outputs/task3_psd_s01.png). No per-(subject,
+      physiological alpha peak (contrast outputs/eda/task3_psd_s11.png
+      against outputs/eda/task3_psd_s01.png). No per-(subject,
       channel) exclusion is applied -- subject 11 and channel F7 are both
       kept as-is; flagged here for awareness if it behaves as an outlier
       downstream.

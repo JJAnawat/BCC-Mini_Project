@@ -1,0 +1,13 @@
+[project]
+name = "bcc"
+version = "0.1.0"
+description = "DEAP EEG emotion recognition: shared loading, features and analysis helpers"
+requires-python = ">=3.12"
+# Pinned dependencies live in requirements.txt.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

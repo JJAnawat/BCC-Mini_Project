@@ -7,9 +7,9 @@ __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
 
-# Regenerable Week 2 outputs (~240 MB): python weeks/week2_features/run_all.py
-weeks/week2_features/outputs/features/
-weeks/week2_features/outputs/models/
+# Regenerable feature outputs (~240 MB): python pipeline/features/run_all.py
+outputs/features/
+outputs/models/
 
 # Local tooling / OS
 .claude/settings.local.json

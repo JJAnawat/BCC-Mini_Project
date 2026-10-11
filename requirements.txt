@@ -21,3 +21,6 @@ tqdm==4.70.1
 # EDA pipeline: reading legacy .xls ratings file, and config.yaml
 xlrd==2.0.2
 pyyaml==6.0.3
+
+# This project's own package (src/bcc), editable
+-e .
