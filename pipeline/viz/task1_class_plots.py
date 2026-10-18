@@ -7,7 +7,7 @@ from scipy.stats import kruskal
 from bcc.analysis import QUADRANTS, trial_means, zscore_within_subject
 from bcc.config import VIZ_DIR as OUTPUT_DIR
 from bcc.features import BAND_NAMES, EEG_CHANNELS, SYMMETRIC_PAIRS, montage_info
-from style import DIVERGING, QUADRANT_COLORS
+from bcc.style import DIVERGING, QUADRANT_COLORS
 
 # Chosen before looking at results: classic valence/arousal markers plus one pair per remaining domain.
 BOX_FEATURES = {

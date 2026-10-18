@@ -8,45 +8,66 @@
       "LVLA": 20.3
     }
   },
-  "task1_de": {
-    "n_subjects_with_alpha_peak": 17,
-    "n_subjects_with_22hz_line": 29
+  "4s": {
+    "task1_de": {
+      "n_subjects_with_alpha_peak": 17,
+      "n_subjects_with_22hz_line": 29
+    },
+    "task2_hjorth": {
+      "n_nonfinite": 0,
+      "n_zero": 0
+    },
+    "task3_asymmetry": {
+      "n_nonfinite_rasm": 0,
+      "rasm_p0.1": 0.4,
+      "rasm_p50": 0.988,
+      "rasm_p99.9": 2.853
+    },
+    "task4_mse": {
+      "n_nonfinite": 538,
+      "entropyhub_max_abs_diff": 0.0
+    },
+    "task5_microstates": {
+      "gev": 0.384,
+      "flagged_subjects": [
+        2,
+        3,
+        4,
+        6,
+        9,
+        11,
+        12,
+        13,
+        17,
+        18,
+        19,
+        22,
+        24,
+        25,
+        26,
+        28,
+        30,
+        32
+      ]
+    }
   },
-  "task2_hjorth": {
-    "n_nonfinite": 0,
-    "n_zero": 0
-  },
-  "task3_asymmetry": {
-    "n_nonfinite_rasm": 0,
-    "rasm_p0.1": 0.4,
-    "rasm_p50": 0.988,
-    "rasm_p99.9": 2.853
-  },
-  "task4_mse": {
-    "n_nonfinite": 538,
-    "entropyhub_max_abs_diff": 0.0
-  },
-  "task5_microstates": {
-    "gev": 0.384,
-    "flagged_subjects": [
-      2,
-      3,
-      4,
-      6,
-      9,
-      11,
-      12,
-      13,
-      17,
-      18,
-      19,
-      22,
-      24,
-      25,
-      26,
-      28,
-      30,
-      32
-    ]
+  "60s": {
+    "task1_de": {},
+    "task2_hjorth": {
+      "n_nonfinite": 0,
+      "n_zero": 0
+    },
+    "task3_asymmetry": {
+      "n_nonfinite_rasm": 0,
+      "rasm_p0.1": 0.425,
+      "rasm_p50": 0.99,
+      "rasm_p99.9": 2.736
+    },
+    "task4_mse": {
+      "n_nonfinite": 0
+    },
+    "task5_microstates": {
+      "n_segments_one_map_dominated": 643
+    }
   }
 }

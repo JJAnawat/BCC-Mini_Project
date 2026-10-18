@@ -7,9 +7,9 @@ from bcc.features import DOMAINS, ID_COLS, METADATA_DIR, load_domain
 QUADRANTS = ["HVHA", "HVLA", "LVHA", "LVLA"]
 
 
-def load_all() -> tuple[pd.DataFrame, dict[str, list[str]]]:
-    """Window-level labels + all 5 domains, and a {domain: feature columns} map."""
-    frames = {d: load_domain(d).set_index(ID_COLS) for d in DOMAINS}
+def load_all(seg: str = "4s") -> tuple[pd.DataFrame, dict[str, list[str]]]:
+    """Labels + all 5 domains for one segmentation ("4s" windows or "60s" trials), and a {domain: feature columns} map."""
+    frames = {d: load_domain(d, seg).set_index(ID_COLS) for d in DOMAINS}
     # MSE inf (no template match at coarse scales) -> that subject's column median. In memory only.
     mse = frames["mse"].replace([np.inf, -np.inf], np.nan)
     frames["mse"] = mse.fillna(mse.groupby(level="subject_id").transform("median"))

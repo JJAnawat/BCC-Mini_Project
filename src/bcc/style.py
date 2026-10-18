@@ -1,4 +1,4 @@
-"""Shared colors and matplotlib style for the visualization scripts (import before plotting)."""
+"""Shared colors and matplotlib style for the plotting stages (viz, modeling); import before plotting."""
 import matplotlib
 
 matplotlib.use("Agg")
@@ -10,6 +10,7 @@ from bcc.analysis import QUADRANTS  # noqa: E402
 # Categorical slots validated all-pairs for CVD separation (dataviz skill's validate_palette.js).
 QUADRANT_COLORS = dict(zip(QUADRANTS, ["#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7"]))
 DIVERGING = LinearSegmentedColormap.from_list("blue_gray_red", ["#184f95", "#2a78d6", "#f0efec", "#e34948", "#9e2a2a"])
+SEQUENTIAL = LinearSegmentedColormap.from_list("blue", ["#fcfcfb", "#cde2fb", "#6da7ec", "#256abf", "#0d366b"])
 
 plt.rcParams.update({
     "figure.facecolor": "#fcfcfb", "axes.facecolor": "#fcfcfb", "savefig.dpi": 150, "savefig.bbox": "tight",

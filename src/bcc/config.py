@@ -44,6 +44,12 @@ def _validate(cfg: dict) -> None:
         f"n_windows_per_trial ({n_windows}) != computed value "
         f"({stim_samples // window_samples})"
     )
+    segs = cfg["windowing"]["segmentations"]
+    assert segs["4s"] == {"window_samples": window_samples, "n_windows_per_trial": n_windows}
+    for name, seg in segs.items():
+        assert seg["window_samples"] * seg["n_windows_per_trial"] == stim_samples, (
+            f"segmentation {name} does not tile the {stim_samples} post-baseline samples exactly"
+        )
 
     channels = cfg["channels"]["order"]
     assert len(channels) == cfg["dataset"]["n_eeg_channels"]
@@ -56,12 +62,14 @@ RATINGS_XLS_PATH = BASE_DIR / CONFIG["paths"]["ratings_xls"]
 
 OUTPUT_DIR = BASE_DIR / "outputs"
 EDA_DIR = OUTPUT_DIR / "eda"
-FEATURES_DIR = OUTPUT_DIR / "features"      # features/<domain>/s{NN}_<domain>.csv
+FEATURES_DIR = OUTPUT_DIR / "features"      # features/<domain>/s{NN}_<domain>.csv (4s windows)
+FEATURES_60S_DIR = OUTPUT_DIR / "features_60s"  # same layout, one 60s segment per trial
 METADATA_DIR = OUTPUT_DIR / "metadata"
 MODELS_DIR = OUTPUT_DIR / "models"
 SANITY_DIR = OUTPUT_DIR / "sanity_checks"   # Week 2 feature sanity checks, per domain
 VIZ_DIR = OUTPUT_DIR / "viz"
-for _d in [EDA_DIR, FEATURES_DIR, METADATA_DIR, MODELS_DIR, SANITY_DIR, VIZ_DIR]:
+MODELING_DIR = OUTPUT_DIR / "modeling"
+for _d in [EDA_DIR, FEATURES_DIR, FEATURES_60S_DIR, METADATA_DIR, MODELS_DIR, SANITY_DIR, VIZ_DIR, MODELING_DIR]:
     _d.mkdir(parents=True, exist_ok=True)
 
 

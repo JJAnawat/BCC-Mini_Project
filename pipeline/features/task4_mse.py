@@ -1,17 +1,20 @@
-"""Task 4: Multiscale Sample Entropy (scales 1-10) per 4s window x channel."""
+"""Task 4: Multiscale Sample Entropy (scales 1-10) per segment (4s window or 60s trial) x channel."""
 import contextlib
 import io
 import warnings
 
 import antropy
 import numpy as np
+from joblib import Parallel, delayed
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from bcc.features import EEG_CHANNELS, N_EEG_CHANNELS, SANITY_DIR, load_subject, run_domain, window_subject
+from bcc.features import (
+    EEG_CHANNELS, N_EEG_CHANNELS, SANITY_DIR, load_subject, run_domain, sanity_path, window_subject,
+)
 
 MSE_M = 2
-MSE_R_FRAC = 0.15               # r = 0.15 * std of the scale-1 window, fixed across scales (Costa 2002)
+MSE_R_FRAC = 0.15               # r = 0.15 * std of the scale-1 segment, fixed across scales (Costa 2002)
 MSE_SCALES = list(range(1, 11))
 CROSSCHECK_SUBJECTS, CROSSCHECK_PER_SUBJECT, CROSSCHECK_SEED = [1, 11], 15, 0
 COLUMNS = [f"{ch}_scale{s}_mse" for ch in EEG_CHANNELS for s in MSE_SCALES]
@@ -29,9 +32,11 @@ def _mse(x: np.ndarray) -> list[float]:
     return [antropy.sample_entropy(_coarse_grain(x, s), order=MSE_M, tolerance=r) for s in MSE_SCALES]
 
 
-def _compute(sid, eeg):
-    windows = window_subject(eeg)
-    return np.array([[_mse(w[c]) for c in range(w.shape[0])] for w in windows]).reshape(len(windows), -1)
+def _compute(sid, eeg, seg):
+    """One subject; channels run in parallel (a 60s channel takes ~0.25s, a whole 60s subject ~5 min serial)."""
+    windows = window_subject(eeg, seg)
+    values = Parallel(n_jobs=-1, batch_size=32)(delayed(_mse)(w[c]) for w in windows for c in range(w.shape[0]))
+    return np.array(values).reshape(len(windows), -1)
 
 
 def _entropyhub_max_diff() -> float:
@@ -54,12 +59,14 @@ def _entropyhub_max_diff() -> float:
     return float(np.max(diffs))
 
 
-def run():
-    df = run_domain("mse", _compute, COLUMNS, cache=True)
+def run(seg="4s"):
+    df = run_domain("mse", lambda sid, eeg: _compute(sid, eeg, seg), COLUMNS, seg, cache=True)
     by_scale = {s: df[[f"{ch}_scale{s}_mse" for ch in EEG_CHANNELS]].to_numpy() for s in MSE_SCALES}
     checks = pd.DataFrame([{"scale": s, "n_nonfinite": int((~np.isfinite(v)).sum()),
                             "mean_finite": v[np.isfinite(v)].mean()} for s, v in by_scale.items()])
-    checks.to_csv(SANITY_DIR / "mse" / "mse_nonfinite_per_scale.csv", index=False)
+    checks.to_csv(sanity_path("mse", "mse_nonfinite_per_scale.csv", seg), index=False)
+    if seg != "4s":                                     # curve plot and EntropyHub cross-check are 4s-only
+        return df, {"n_nonfinite": int(checks["n_nonfinite"].sum())}
 
     plt.figure(figsize=(7, 4.5))
     plt.plot(checks["scale"], checks["mean_finite"], marker="o")

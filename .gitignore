@@ -9,6 +9,7 @@ __pycache__/
 
 # Regenerable feature outputs (~240 MB): python pipeline/features/run_all.py
 outputs/features/
+outputs/features_60s/
 outputs/models/
 
 # Local tooling / OS

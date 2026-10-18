@@ -1,4 +1,4 @@
-"""Task 1: Differential Entropy per 4s window x channel x band, from Welch band power."""
+"""Task 1: Differential Entropy per segment (4s window or 60s trial) x channel x band, from Welch band power."""
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -37,16 +37,18 @@ def _line_prominence(freqs, spectrum) -> float:
     return float(spectrum[dist.argmin()] - spectrum[flank].mean())
 
 
-def run():
+def run(seg="4s"):
     spectra, freqs = {}, None
 
     def compute(sid, eeg):
         nonlocal freqs
-        freqs, psd = window_psd(window_subject(eeg))                      # (600, 32, n_freqs)
+        freqs, psd = window_psd(window_subject(eeg, seg))                 # (600 or 40, 32, n_freqs)
         spectra[sid] = _de(psd).mean(axis=0)                              # per-frequency DE, for checks
         return _de(band_powers(freqs, psd)).reshape(len(psd), -1)
 
-    df = run_domain("de", compute, COLUMNS)
+    df = run_domain("de", compute, COLUMNS, seg)
+    if seg != "4s":                                                       # spectrum checks are 4s-only
+        return df, {}
 
     post = [EEG_CHANNELS.index(c) for c in POSTERIOR]
     rows = []

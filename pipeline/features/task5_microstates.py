@@ -1,4 +1,4 @@
-"""Task 5: EEG microstates -- K=4 group maps from pooled GFP peaks, backfit and summarized per 4s window."""
+"""Task 5: EEG microstates -- K=4 group maps from pooled GFP peaks, backfit, summarized per 4s window or 60s trial."""
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
@@ -9,7 +9,7 @@ from pycrostates.preprocessing import extract_gfp_peaks
 from pycrostates.segmentation import RawSegmentation
 
 from bcc.features import (
-    MODELS_DIR, N_EEG_CHANNELS, N_SUBJECTS, N_WINDOWS, SANITY_DIR, WINDOW_SAMPLES,
+    MODELS_DIR, N_EEG_CHANNELS, N_SUBJECTS, SANITY_DIR, SEGMENTS,
     iter_subjects, load_subject, montage_info, run_domain, stimulus,
 )
 
@@ -50,19 +50,20 @@ def _fit_group_model(info) -> ModKMeans:
     return model
 
 
-def _backfit(model, eeg, info) -> list[list[float]]:
-    """Smoothed backfit over each whole 60s trial (no per-window edge effects), stats per window."""
+def _backfit(model, eeg, info, seg) -> list[list[float]]:
+    """Smoothed backfit over each whole 60s trial (no per-window edge effects), stats per segment."""
+    samples, n_windows = SEGMENTS[seg]
     rows = []
     for trial in eeg:
         stim = stimulus(trial) * UV_TO_V
         labels = model.predict(mne.io.RawArray(stim, info, verbose="ERROR"), factor=SMOOTH_FACTOR,
                                half_window_size=SMOOTH_HALF_WINDOW, reject_edges=False, verbose="ERROR").labels
-        for w in range(N_WINDOWS):
-            sl = slice(w * WINDOW_SAMPLES, (w + 1) * WINDOW_SAMPLES)
-            seg = RawSegmentation(labels=labels[sl], inst=mne.io.RawArray(stim[:, sl], info, verbose="ERROR"),
-                                  cluster_centers_=model.cluster_centers_, cluster_names=model.cluster_names)
-            p = seg.compute_parameters(norm_gfp=True)
-            trans = seg.compute_transition_matrix(stat="probability", ignore_repetitions=True)
+        for w in range(n_windows):
+            sl = slice(w * samples, (w + 1) * samples)
+            segm = RawSegmentation(labels=labels[sl], inst=mne.io.RawArray(stim[:, sl], info, verbose="ERROR"),
+                                   cluster_centers_=model.cluster_centers_, cluster_names=model.cluster_names)
+            p = segm.compute_parameters(norm_gfp=True)
+            trans = segm.compute_transition_matrix(stat="probability", ignore_repetitions=True)
             rows.append([p[f"{m}_{k}"] for m in MAP_NAMES for k in ("timecov", "meandurs", "occurrences")]
                         + [trans[i, j] for i, j in TRANSITIONS])
     return rows
@@ -75,20 +76,22 @@ def _pc1_share(eeg) -> float:
     return float(ev[-1] / ev.sum())
 
 
-def run():
+def run(seg="4s"):
     info = montage_info()
     model = _fit_group_model(info)
+    df = run_domain("microstates", lambda sid, eeg: _backfit(model, eeg, info, seg), COLUMNS, seg, cache=True)
+    cov = df[[f"{m}_coverage" for m in MAP_NAMES]]
+    assert np.allclose(cov.sum(axis=1), 1.0), "coverage must sum to 1 per segment"
+    for i in range(N_MAPS):
+        row = df[[f"trans_{MAP_NAMES[i]}_to_{MAP_NAMES[j]}" for j in range(N_MAPS) if j != i]].sum(axis=1)
+        assert (np.isclose(row, 1.0) | np.isclose(row, 0.0)).all(), "transition rows must sum to 1 (or 0)"
+    if seg != "4s":                     # maps plot and subject quality flags are 4s-only (subject-level)
+        return df, {"n_segments_one_map_dominated": int((cov.max(axis=1) > DOMINATED_COVERAGE).sum())}
+
     fig = model.plot(show=False)
     fig.suptitle(f"Group microstate maps (GEV={model.GEV_:.3f}); order is arbitrary")
     fig.savefig(SANITY_DIR / "microstates" / "group_maps.png", dpi=150)
     plt.close(fig)
-
-    df = run_domain("microstates", lambda sid, eeg: _backfit(model, eeg, info), COLUMNS, cache=True)
-    cov = df[[f"{m}_coverage" for m in MAP_NAMES]]
-    assert np.allclose(cov.sum(axis=1), 1.0), "coverage must sum to 1 per window"
-    for i in range(N_MAPS):
-        row = df[[f"trans_{MAP_NAMES[i]}_to_{MAP_NAMES[j]}" for j in range(N_MAPS) if j != i]].sum(axis=1)
-        assert (np.isclose(row, 1.0) | np.isclose(row, 0.0)).all(), "transition rows must sum to 1 (or 0)"
 
     quality = pd.DataFrame({
         "subject_id": range(1, N_SUBJECTS + 1),

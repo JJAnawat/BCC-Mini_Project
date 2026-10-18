@@ -92,6 +92,12 @@ windowing:
   window_samples: 512          # 4s * 128Hz
   drop_baseline_sec: 3         # first 384 samples of each 8064-sample trial
   n_windows_per_trial: 15      # (8064 - 384) / 512, exact -- no partial window
+  # Week 4 addition (user decision, 2026-10-11): every feature domain is computed on both
+  # segmentations. "4s" mirrors the keys above; "60s" is the whole stimulus as one segment,
+  # because averaging 4s features into a trial row is not the feature of the trial.
+  segmentations:
+    4s:  {window_samples: 512, n_windows_per_trial: 15}
+    60s: {window_samples: 7680, n_windows_per_trial: 1}
   bands_hz:
     theta: [4, 8]
     alpha: [8, 13]

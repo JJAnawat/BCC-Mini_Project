@@ -37,6 +37,39 @@ Microstate transitions: 4 maps give 16 from→to pairs, but map-to-itself is alw
 Runtime from scratch: ~15 min (MSE ~12 min, microstates ~3 min). MSE and microstates are
 cached per subject; delete `features/mse/`, `features/microstates/` or `models/` to recompute.
 
+## 60 s set (added in Week 4)
+
+Every domain is also computed once on the whole 60 s stimulus (7,680 samples). Files are in
+`features_60s/<domain>/s{NN}_<domain>.csv`, 40 rows per subject. The ID columns are the same, with
+`window_idx = 0`, so rows join to the `window_idx == 0` rows of the metadata. The 4 s files above are
+unchanged (checked byte for byte).
+
+Why it exists: labels are per trial, and the mean of 15 nonlinear window features is not the same as
+the feature of the trial. Both segmentations are defined in `config.yaml` (`windowing.segmentations`).
+
+Methods are the same code at the new length:
+- **DE:** Welch averages 29 half-overlapping 512-sample segments, so the bins are still 0.25 Hz.
+- **MSE:** r = 0.15·std of the whole trial.
+- **Microstates:** the same group maps and backfit, with statistics over the full 60 s label sequence.
+
+Checks (`sanity_checks/<domain>/*_60s.csv`): no NaN, inf or zero values anywhere. MSE has no `inf`
+at any scale; even scale 10 still has 768 samples.
+
+Per feature, across 1,280 trials, the 60 s value correlates with the mean of the trial's 4 s values
+as follows:
+
+| Domain | Median r | Notes |
+|---|---|---|
+| DE | 0.99 | |
+| Asymmetry | 0.99 | |
+| Hjorth | 0.95 | |
+| MSE | 0.89 | Systematic offset of about 0.6 SD: longer series at the coarse scales |
+| Microstates | 0.86 | Durations and transitions are no longer cut at 4 s boundaries |
+
+643/1,280 trials have one map covering >90% of the trial (the degenerate subjects).
+
+Runtime: about 1 h in total, almost all of it MSE (parallel over channels, ~1.7 min per subject).
+
 ## Sanity checks (`sanity_checks/<domain>/`)
 
 - **DE:** 17/32 subjects show a posterior alpha peak above the 1/f trend. A narrowband 22 Hz

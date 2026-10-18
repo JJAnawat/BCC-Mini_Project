@@ -16,14 +16,18 @@ deap-dataset/          raw DEAP data (do not modify)
 src/bcc/               shared library, imported by every stage
   config.py              CONFIG loader + all input/output paths
   data.py                .dat loading, corrected labels, channels, symmetric pairs
-  features.py            windowing, PSD/band power, feature-file I/O (load_domain), per-subject loop
-  analysis.py            load_all (all domains + labels), per-subject z-score, trial means
+  features.py            segmentations (4s/60s), PSD/band power, feature-file I/O (load_domain), per-subject loop
+  analysis.py            load_all(seg) (all domains + labels), per-subject z-score, trial means
+  modeling.py            nested-LOSO harness (SVM/RF grids), per-fold metrics
+  style.py               shared plot colors/style
 pipeline/              one folder per stage, each with a run_all.py entry point
   eda/                   Week 1: exploratory checks
   features/              Week 2: one task per feature domain
-  viz/                   Week 3: boxplots/topomaps, PCA/t-SNE, correlation (style.py = plot style)
-outputs/               eda/, viz/, features/<domain>/, metadata/, models/, sanity_checks/
-reports/               EDA_SUMMARY.md, FEATURES_SUMMARY.md, VIZ_SUMMARY.md
+  viz/                   Week 3: boxplots/topomaps, PCA/t-SNE, correlation
+  modeling/              Week 4: nested-LOSO training, evaluation
+outputs/               eda/, viz/, features/<domain>/ (4s), features_60s/<domain>/, metadata/, models/,
+                       sanity_checks/, modeling/
+reports/               EDA_SUMMARY.md, FEATURES_SUMMARY.md, VIZ_SUMMARY.md, MODELING_SUMMARY.md
 ```
 
 **Conventions:** code used by more than one stage goes in `src/bcc`; stage-specific scripts stay
@@ -56,14 +60,20 @@ Each file = 3 ID columns (`subject_id, trial_idx, window_idx`) + features. Label
 - `de`: 32 channels × 4 bands = 128 · `hjorth`: 32 × 3 = 96 · `asymmetry`: 14 pairs × 4 bands ×
   DASM/RASM = 112 · `mse`: 32 × 10 scales = 320 · `microstates`: 4 maps × 3 stats + 12
   transitions = 24
+- **60 s set (added Week 4, user decision):** the same domains computed once on the whole 60 s
+  stimulus. It lives in `outputs/features_60s/<domain>/`, 40 rows per subject with `window_idx = 0`.
+  Load it with `load_domain(d, "60s")` / `load_all("60s")`. It has no MSE `inf`.
+  - Don't average 4 s window features into trial rows; use this set when you need trial-level
+    features.
+  - The 4 s files are unchanged.
 
-Reproduce with: `python pipeline/features/run_all.py` (~15 min from scratch; MSE and
+Reproduce with: `python pipeline/features/run_all.py` (both sets: ~1 h from scratch; MSE and
 microstates cached after that)
 
 **Before modeling:**
 - Labels are per trial: never split one trial's windows across train/test; use LOSO for
   cross-subject results.
-- MSE has 538 `inf` values; impute or drop.
+- MSE (4s set) has 538 `inf` values; impute or drop.
 - Microstates are unreliable for 18/32 subjects (`outputs/sanity_checks/microstates/subject_quality.csv`,
   `flag_degenerate`); compare with and without them.
 - A 22 Hz noise line (29/32 subjects) biases beta-band features; no notch applied.
@@ -83,9 +93,24 @@ Full detail in `reports/VIZ_SUMMARY.md`.
 
 Reproduce with: `python pipeline/viz/run_all.py` (~2 min)
 
+## Week 4 status: done
+
+Full detail in `reports/MODELING_SUMMARY.md`. Nested LOSO (`bcc.modeling.nested_loso`) is run on
+the 60 s set with per-subject z-scoring, SVM (RBF) and RF, using the same grid for every domain.
+- Every domain is near chance for 4-class quadrants. The best is DE: balanced accuracy 0.30,
+  macro-F1 0.27, against chance 0.25.
+  - Valence and arousal accuracy derived from the quadrant predictions don't beat the majority
+    baselines (0.566 / 0.589).
+- No domain pair differs significantly: Wilcoxon on fold macro-F1, Holm p ≥ 0.11.
+- The confusion matrices show no diagonal and no single-axis structure. Each model leans towards one
+  favourite class, usually HVHA.
+- The 4s set was not modeled. A window-level nested grid would take about 10 h per domain.
+
+Reproduce with: `python pipeline/modeling/run_all.py` (~55 min)
+
 ## Rules for downstream code
 
 `config.yaml` is the single source of truth for all preprocessing decisions above. New scripts
 must load it via `bcc.config.CONFIG` rather than redefining channels, bands,
 thresholds, or windowing — that's the whole point of freezing these after Week 1. Likewise, the
-feature CSVs in `outputs/features/` are the frozen modeling inputs.
+feature CSVs in `outputs/features/` and `outputs/features_60s/` are the frozen modeling inputs.

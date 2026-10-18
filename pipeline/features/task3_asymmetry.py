@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from bcc.features import BAND_NAMES, ID_COLS, N_SUBJECTS, SANITY_DIR, SYMMETRIC_PAIRS, feature_path, load_domain
+from bcc.features import BAND_NAMES, ID_COLS, N_SUBJECTS, SYMMETRIC_PAIRS, feature_path, load_domain, sanity_path
 
 
 def _asymmetry(de: pd.DataFrame) -> pd.DataFrame:
@@ -15,15 +15,15 @@ def _asymmetry(de: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([de[ID_COLS], pd.DataFrame(out)], axis=1)
 
 
-def run():
+def run(seg="4s"):
     for sid in range(1, N_SUBJECTS + 1):
-        _asymmetry(pd.read_csv(feature_path("de", sid))).to_csv(feature_path("asymmetry", sid), index=False)
-    df = load_domain("asymmetry")
+        _asymmetry(pd.read_csv(feature_path("de", sid, seg))).to_csv(feature_path("asymmetry", sid, seg), index=False)
+    df = load_domain("asymmetry", seg)
 
     rasm = df[[c for c in df.columns if c.endswith("_rasm")]].to_numpy()
     summary = {"n_nonfinite_rasm": int((~np.isfinite(rasm)).sum()),
                **dict(zip(["rasm_p0.1", "rasm_p50", "rasm_p99.9"], np.percentile(rasm, [0.1, 50, 99.9]).round(3).tolist()))}
-    pd.DataFrame([summary]).to_csv(SANITY_DIR / "asymmetry" / "rasm_range.csv", index=False)
+    pd.DataFrame([summary]).to_csv(sanity_path("asymmetry", "rasm_range.csv", seg), index=False)
     print(f"  checks: {summary}")
     return df, summary
 

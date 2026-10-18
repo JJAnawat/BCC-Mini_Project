@@ -7,7 +7,7 @@ from scipy.stats import spearmanr
 from bcc.analysis import zscore_within_subject
 from bcc.config import VIZ_DIR as OUTPUT_DIR
 from bcc.features import DOMAINS
-from style import DIVERGING
+from bcc.style import DIVERGING
 
 
 def _full_heatmap(corr, sizes):

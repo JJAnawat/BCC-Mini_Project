@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from bcc.analysis import QUADRANTS, trial_means, zscore_within_subject
 from bcc.config import VIZ_DIR as OUTPUT_DIR
 from bcc.features import DOMAINS
-from style import QUADRANT_COLORS
+from bcc.style import QUADRANT_COLORS
 
 SUBJECT_COLORS = np.vstack([plt.cm.tab20(np.arange(20)), plt.cm.tab20b(np.arange(12))])  # 32 subjects
 

@@ -1,8 +1,8 @@
-"""Task 2: Hjorth Activity/Mobility/Complexity per 4s window x channel (broadband, time domain)."""
+"""Task 2: Hjorth Activity/Mobility/Complexity per segment (4s window or 60s trial) x channel (broadband, time domain)."""
 import numpy as np
 import pandas as pd
 
-from bcc.features import EEG_CHANNELS, SANITY_DIR, run_domain, window_subject
+from bcc.features import EEG_CHANNELS, run_domain, sanity_path, window_subject
 
 PARAMS = ["activity", "mobility", "complexity"]
 COLUMNS = [f"{ch}_{p}" for ch in EEG_CHANNELS for p in PARAMS]
@@ -20,14 +20,14 @@ def _hjorth(windows: np.ndarray) -> np.ndarray:
     return np.stack([var_x, mobility, complexity], axis=-1)
 
 
-def run():
-    df = run_domain("hjorth", lambda sid, eeg: _hjorth(window_subject(eeg)).reshape(-1, len(COLUMNS)), COLUMNS)
+def run(seg="4s"):
+    df = run_domain("hjorth", lambda sid, eeg: _hjorth(window_subject(eeg, seg)).reshape(-1, len(COLUMNS)), COLUMNS, seg)
     ranges = pd.DataFrame([
         {"parameter": p, "n_nonfinite": int((~np.isfinite(v)).sum()), "n_zero": int((v == 0).sum()),
          "min": np.nanmin(v), "median": np.nanmedian(v), "max": np.nanmax(v)}
         for p in PARAMS for v in [df[[f"{ch}_{p}" for ch in EEG_CHANNELS]].to_numpy()]
     ])
-    ranges.to_csv(SANITY_DIR / "hjorth" / "hjorth_ranges.csv", index=False)
+    ranges.to_csv(sanity_path("hjorth", "hjorth_ranges.csv", seg), index=False)
     summary = {"n_nonfinite": int(ranges["n_nonfinite"].sum()), "n_zero": int(ranges["n_zero"].sum())}
     print(f"  checks: {summary}")
     return df, summary
