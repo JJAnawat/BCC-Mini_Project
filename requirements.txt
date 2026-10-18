@@ -1,7 +1,7 @@
 # Verified working set (Python 3.12) — installed and import-tested together in a clean venv.
 # Core scientific stack
 numpy==2.5.3
-pandas==3.0.5
+pandas==2.3.3
 scipy==1.18.1
 matplotlib==3.11.2
 seaborn==0.13.2
@@ -21,6 +21,9 @@ tqdm==4.70.1
 # EDA pipeline: reading legacy .xls ratings file, and config.yaml
 xlrd==2.0.2
 pyyaml==6.0.3
+
+# Week 4 modeling (AutoGluon 1.6.3 requires pandas<2.4, hence the pandas pin above)
+autogluon.tabular[all]==1.6.3
 
 # This project's own package (src/bcc), editable
 -e .

@@ -1,98 +1,132 @@
-# Week 4 — Nested-LOSO quadrant classification, per domain
+# Week 4 — Nested-LOSO AutoGluon, binary valence / arousal, per domain
 
 Files named below are in `outputs/modeling/`. Code: `pipeline/modeling/`, with the harness in `src/bcc/modeling.py`.
+The first Week 4 run (SVM/RF on 4-class quadrants) is at git tag `week4-svm-rf`; it is the baseline in §4.
 
 ## Setup
 
 - **Input:** the 60 s feature set, one row per trial, 1,280 trials. See `FEATURES_SUMMARY.md`, "60 s set".
   Features are z-scored per subject, including the held-out subject; this uses only its unlabeled features.
-- **Target:** 4-class quadrant.
+- **Targets:** two binary tasks, trained separately. Valence is HV/LV and arousal is HA/LA. Both come
+  from the quadrant labels, so the thresholds are the same.
+- **Domains:** DE, Hjorth, microstates.
+  - Asymmetry was dropped because it was the weakest domain for both SVM and RF.
+  - MSE was dropped because it is redundant with Hjorth (Week 3 |r| 0.72), ranked mid-table, and is
+    the largest domain (320 features).
+  - Caveat: both were judged on the 4-class task. Frontal asymmetry is a classic valence feature,
+    and binary valence is untested for it.
+  - Their feature files are kept; they are just not modeled.
 - **Outer loop:** 32 leave-one-subject-out folds.
-- **Inner loop:** `GroupKFold(5)` over the 31 training subjects, tuned on macro-F1.
-- **Same protocol for every domain:**
-  - **SVM:** RBF kernel, C ∈ {0.01, 0.1, 1, 10, 100}, γ ∈ {0.01, 0.1, 1, 10}/n_features.
-  - **RF:** 150 trees, max_depth ∈ {None, 10}, min_samples_leaf ∈ {1, 5}.
-  - Both use `class_weight="balanced"`.
+- **Inner loop:** AutoGluon 1.6.3 bagging over 5 group-disjoint folds of the 31 training subjects
+  (`GroupKFold(5)`). Model choice and the weighted-ensemble weights are therefore scored cross-subject.
+- **Same protocol for every domain and target:**
+  - Metric: `f1_macro`, with `sample_weight="balance_weight"`.
+  - No stacking and no time limit, so results do not depend on the hardware.
+  - Seed 42.
+- **Models:** AutoGluon's default configs for LightGBM (default and ExtraTrees variants), XGBoost,
+  RandomForest (Gini/entropy) and ExtraTrees (Gini/entropy), combined in a weighted ensemble.
+  - Neural nets were left out for speed.
+  - CatBoost and LightGBMLarge were dropped after a 4-fold pilot (DE, valence). They took about half
+    the fit time and never scored best on inner CV.
+  - That choice used inner scores of folds 1–4, which include subjects held out in other folds. The
+    leak is small, because the gaps were small and the main reason for dropping them was speed.
 - **Metrics:** computed per held-out subject; the tables show mean ± SD over the 32 folds.
-  - Subject 23 has no LVHA trials. In that fold, macro-F1 and balanced accuracy average its 3 classes.
-- **Valence and arousal accuracy:** taken from the same quadrant predictions (H/L of each axis).
 
 **Chance levels:**
 
-| Measure | Chance |
-|---|---|
-| Balanced accuracy | 0.25 |
-| Accuracy, always HVHA | 0.358 |
-| Valence accuracy, majority (HV) | 0.566 |
-| Arousal accuracy, majority (HA) | 0.589 |
+| Measure | Valence | Arousal |
+|---|---|---|
+| Balanced accuracy / macro-F1 | 0.5 | 0.5 |
+| Accuracy, always the majority class (HV / HA) | 0.566 | 0.589 |
 
 ## 1. Results (`results.csv`, `fold_metrics.csv`)
 
-| Domain | Model | Accuracy | Macro-F1 | Balanced acc | Valence acc | Arousal acc |
-|---|---|---|---|---|---|---|
-| de | SVM | 0.285 ± 0.095 | 0.266 ± 0.095 | **0.300** ± 0.105 | 0.562 | 0.538 |
-| de | RF | 0.301 ± 0.085 | **0.271** ± 0.085 | 0.293 ± 0.089 | 0.580 | 0.530 |
-| hjorth | SVM | 0.279 ± 0.091 | 0.256 ± 0.089 | 0.296 ± 0.102 | 0.552 | 0.508 |
-| hjorth | RF | 0.302 ± 0.095 | 0.267 ± 0.095 | 0.294 ± 0.104 | 0.557 | 0.530 |
-| asymmetry | SVM | 0.266 ± 0.081 | 0.222 ± 0.062 | 0.258 ± 0.078 | 0.494 | 0.544 |
-| asymmetry | RF | 0.273 ± 0.078 | 0.229 ± 0.073 | 0.265 ± 0.099 | 0.496 | 0.538 |
-| mse | SVM | 0.274 ± 0.098 | 0.249 ± 0.084 | 0.274 ± 0.102 | 0.533 | 0.529 |
-| mse | RF | 0.294 ± 0.092 | 0.256 ± 0.085 | 0.278 ± 0.103 | 0.527 | 0.544 |
-| microstates | SVM | 0.288 ± 0.121 | 0.256 ± 0.116 | 0.287 ± 0.126 | 0.503 | 0.547 |
-| microstates | RF | 0.284 ± 0.102 | 0.240 ± 0.095 | 0.272 ± 0.093 | 0.512 | 0.548 |
+| Target | Domain | Accuracy | Macro-F1 | Balanced acc | Holm p vs 0.5 |
+|---|---|---|---|---|---|
+| valence | de | 0.571 ± 0.068 | **0.555** ± 0.068 | **0.566** ± 0.068 | **< 0.001** |
+| valence | hjorth | 0.556 ± 0.079 | 0.531 ± 0.084 | 0.543 ± 0.079 | **0.025** |
+| valence | microstates | 0.556 ± 0.105 | 0.515 ± 0.109 | 0.535 ± 0.103 | 0.077 |
+| arousal | de | 0.541 ± 0.098 | 0.502 ± 0.093 | 0.526 ± 0.098 | 0.14 |
+| arousal | hjorth | 0.533 ± 0.106 | 0.486 ± 0.107 | 0.516 ± 0.110 | 0.32 |
+| arousal | microstates | 0.523 ± 0.105 | 0.478 ± 0.108 | 0.524 ± 0.085 | 0.20 |
 
-- **Every domain is close to chance.** The best result is DE (balanced accuracy 0.30, macro-F1 0.27).
-  - DE and Hjorth beat 0.25 balanced accuracy in 21–23 of 32 folds (one-sided Wilcoxon p ≈ 0.01 each).
-    That is not significant after correcting for the 10 domain × model tests.
-  - Asymmetry, MSE and microstates are not distinguishable from chance (p ≥ 0.1).
-- **No model beats the majority baselines** for accuracy, valence or arousal. Class-balanced
-  training gives up the majority class to predict all four.
-  - Valence accuracy tops out at 0.58 (DE, RF), against a majority baseline of 0.566.
-  - Arousal accuracy is at most 0.55, against 0.589.
-- **SVM and RF agree.** The ranking (DE ≈ Hjorth > MSE ≈ microstates > asymmetry) is the same for both,
-  and no RF–SVM gap is larger than its SD.
-- **Tuning leaned towards smooth models** (`best_params.csv`):
-  - SVM never chose the largest γ (10/n_features).
-  - DE and microstates mostly chose 0.01–0.1/n_features. Hjorth, asymmetry and MSE mostly chose
-    1/n_features.
-  - For DE and Hjorth, RF mostly chose min_samples_leaf = 5.
-  - Inner-CV macro-F1 (0.25–0.30) matches the outer scores, so the tuning is not overfitting. There
-    is just little signal to find.
+The p-values come from a one-sided Wilcoxon of fold balanced accuracy against 0.5, Holm-corrected
+over the 6 tests.
+
+- **Valence is the only target above chance.** DE and Hjorth reach balanced accuracies of 0.57 and
+  0.54. The effect is small.
+- **Plain accuracy does not beat always predicting the majority class.**
+  - Valence DE is +0.005 over the per-subject majority baseline. It wins in 16 of 32 folds
+    (one-sided p = 0.21).
+  - Every arousal model is 0.05–0.07 *below* its majority baseline.
+  - So the valence signal is real but weak: about 57 % balanced accuracy across subjects.
+- **Arousal is not learned across subjects** by any domain.
+- **The inner CV is mildly optimistic.** The ensemble's inner macro-F1 was 0.57–0.59 for valence and
+  0.55–0.56 for arousal, against 0.52–0.56 and 0.48–0.50 held out. Part of the gap is the ensemble
+  weights, which are fitted on the same out-of-fold predictions they are scored on.
+- **Microstate subject quality** (`flag_degenerate`) shows no consistent pattern.
+  - Arousal macro-F1 is lower on the 18 flagged subjects than on the 14 clean ones (0.43 vs 0.54).
+  - Valence goes the other way (0.53 vs 0.50).
+  - Both gaps are within the fold SD.
 
 ## 2. Confusion matrices (`confusion_matrices.png`)
 
 Each matrix pools the 32 held-out subjects and is row-normalized.
 
-- **There is no clear diagonal.** The best per-class recall is about 0.35, and HVHA recall reaches
-  0.40–0.45 only for models that predict HVHA for everything.
-- **Each model mostly picks a favourite class** instead of confusing neighbouring quadrants.
-  - Asymmetry and MSE, and RF in general, put about 35–45% of every row into HVHA, the largest class.
-  - SVM on DE and Hjorth puts about 30–38% of every row into LVHA.
-- **Errors show no single-axis structure.**
-  - Of all wrong predictions, about one third get only valence wrong, one third only arousal, and
-    one third both. That is the split expected from guessing.
-  - DE comes closest to an axis effect: arousal-only errors are 0.39–0.40 against valence-only
-    0.33–0.35, which points to a slightly better valence signal. The difference is small.
-- So the models are not tracking one axis well and the other poorly. Neither axis is learned across
-  subjects.
+- **Every model leans to the majority class**, even with balanced sample weights.
+  - Valence: HV recall is 0.63–0.69 and LV recall 0.38–0.49.
+  - Arousal: HA recall is 0.62–0.66 and LA recall 0.34–0.39.
+- DE on valence comes closest to a symmetric split: HV recall 0.64, LV recall 0.49.
+- On arousal, the LA row looks almost the same as the HA row. That is the pattern of a model that
+  does not separate the classes.
 
-## 3. Significance (`significance.csv`)
+## 3. Model screen (`leaderboards.csv`) and domain comparison (`significance.csv`)
 
-Paired Wilcoxon signed-rank on fold macro-F1 (32 folds) for all 10 domain pairs, Holm-corrected
-within each model.
+- **The ensemble was chosen in all 192 fits.** Its base models are close to one another:
 
-- **No pair is significant.** For SVM all Holm p ≥ 0.71; for RF all Holm p ≥ 0.11.
-- The nearest are RF DE vs asymmetry (median difference +0.049, raw p = 0.011, Holm 0.11) and RF
-  Hjorth vs asymmetry (+0.052, raw p = 0.019, Holm 0.18).
-- Asymmetry is the weakest domain for both models, but the data cannot rank the domains.
-- **Microstate subject quality has no effect.** SVM macro-F1 is the same for the 18 flagged
-  (degenerate) subjects and the 14 clean ones (0.255 vs 0.257). RF is slightly lower on flagged
-  subjects (0.221 vs 0.265), well within the fold SD.
+  | Model | Mean inner macro-F1, valence | Mean inner macro-F1, arousal |
+  |---|---|---|
+  | LightGBMXT | 0.576 | 0.550 |
+  | XGBoost | 0.569 | 0.549 |
+  | LightGBM | 0.569 | 0.547 |
+  | RF / ExtraTrees | 0.53–0.54 | 0.50–0.51 |
+
+  - The best single model per fold was LightGBMXT in 89 fits, XGBoost in 56 and LightGBM in 47.
+  - The boosted models beat the bagged-tree models by about 0.04, but they are within 0.007 of each
+    other.
+- **No fine-tuning stage.** Tuning the top family (LightGBMXT) could only separate models that are
+  already within 0.01 on inner CV. With a held-out signal this weak, it would mostly fit inner-CV noise.
+- **No domain pair differs significantly** (paired Wilcoxon on fold macro-F1, Holm within target).
+  The nearest is valence DE vs Hjorth: median difference +0.021, raw p = 0.047, Holm p = 0.14.
+
+## 4. Against the Week 4 SVM/RF baseline
+
+For the baseline, the Week 4 4-class predictions were collapsed to H/L on each axis, and the same
+binary fold metrics were computed. Each AutoGluon domain is compared with SVM and RF by paired
+Wilcoxon on fold balanced accuracy.
+
+| Target | Domain | SVM (4-class) | RF (4-class) | AutoGluon (binary) |
+|---|---|---|---|---|
+| valence | de | 0.572 | 0.580 | 0.566 |
+| valence | hjorth | 0.563 | 0.549 | 0.543 |
+| valence | microstates | 0.508 | 0.495 | 0.535 |
+| arousal | de | 0.539 | 0.519 | 0.526 |
+| arousal | hjorth | 0.507 | 0.526 | 0.516 |
+| arousal | microstates | 0.540 | 0.542 | 0.524 |
+
+- **AutoGluon with binary targets does not beat SVM/RF trained on quadrants.** All 12 differences
+  are within ±0.04.
+  - The only raw p < 0.05 is valence microstates against RF: +0.041, p = 0.025. It does not survive
+    correction for 12 tests.
+- The ceiling is in the features, not the classifier or the target framing. The cross-subject
+  valence signal in DE and Hjorth is about 0.57 balanced accuracy whichever way it is modeled.
+  Arousal has none.
 
 **For Week 5:**
-- No single domain carries a usable cross-subject quadrant signal. Fusion has to add information,
-  not pick a winner.
-- DE and Hjorth overlap heavily (Week 3), so fusing them adds little. Asymmetry and microstates are
-  the independent views, but they are also the weakest here.
+- Valence is the target worth pursuing, with DE as the anchor domain.
+- Fusion or new information has to add signal. More model search on these features has run out.
+- Asymmetry deserves one binary-valence check before it is ruled out for good.
 
-Reproduce with `python pipeline/modeling/run_all.py` (~55 min on 8 cores; RF about half of it).
+Reproduce with `python pipeline/modeling/run_all.py`: about 3.1 h on 8 cores, running 4 outer folds
+in parallel with 2 cores each. The run is resumable; finished target × domain results are cached in
+`outputs/modeling/predictions/`.

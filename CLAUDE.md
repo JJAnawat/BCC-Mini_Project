@@ -18,13 +18,13 @@ src/bcc/               shared library, imported by every stage
   data.py                .dat loading, corrected labels, channels, symmetric pairs
   features.py            segmentations (4s/60s), PSD/band power, feature-file I/O (load_domain), per-subject loop
   analysis.py            load_all(seg) (all domains + labels), per-subject z-score, trial means
-  modeling.py            nested-LOSO harness (SVM/RF grids), per-fold metrics
+  modeling.py            nested-LOSO AutoGluon harness (binary valence/arousal), per-fold metrics
   style.py               shared plot colors/style
 pipeline/              one folder per stage, each with a run_all.py entry point
   eda/                   Week 1: exploratory checks
   features/              Week 2: one task per feature domain
   viz/                   Week 3: boxplots/topomaps, PCA/t-SNE, correlation
-  modeling/              Week 4: nested-LOSO training, evaluation
+  modeling/              Week 4: nested-LOSO AutoGluon training, evaluation
 outputs/               eda/, viz/, features/<domain>/ (4s), features_60s/<domain>/, metadata/, models/,
                        sanity_checks/, modeling/
 reports/               EDA_SUMMARY.md, FEATURES_SUMMARY.md, VIZ_SUMMARY.md, MODELING_SUMMARY.md
@@ -95,18 +95,25 @@ Reproduce with: `python pipeline/viz/run_all.py` (~2 min)
 
 ## Week 4 status: done
 
-Full detail in `reports/MODELING_SUMMARY.md`. Nested LOSO (`bcc.modeling.nested_loso`) is run on
-the 60 s set with per-subject z-scoring, SVM (RBF) and RF, using the same grid for every domain.
-- Every domain is near chance for 4-class quadrants. The best is DE: balanced accuracy 0.30,
-  macro-F1 0.27, against chance 0.25.
-  - Valence and arousal accuracy derived from the quadrant predictions don't beat the majority
-    baselines (0.566 / 0.589).
-- No domain pair differs significantly: Wilcoxon on fold macro-F1, Holm p ≥ 0.11.
-- The confusion matrices show no diagonal and no single-axis structure. Each model leans towards one
-  favourite class, usually HVHA.
-- The 4s set was not modeled. A window-level nested grid would take about 10 h per domain.
+Full detail in `reports/MODELING_SUMMARY.md`. The SVM/RF 4-class run (balanced acc 0.30, chance 0.25)
+is at git tag `week4-svm-rf`. The current stage replaced it:
+- **Setup:**
+  - AutoGluon (`bcc.modeling.loso_autogluon`), nested LOSO on the 60 s set with per-subject z-scoring.
+  - Two binary targets, valence HV/LV and arousal HA/LA, taken from the quadrant labels.
+  - Domains: DE, Hjorth and microstates only (`MODEL_DOMAINS`). Asymmetry and MSE were dropped from
+    modeling by the user's decision; their feature files are kept.
+  - Tree models only, bagged over 5 group-disjoint inner folds, combined in a weighted ensemble.
+- **Valence:** the only target above chance. DE reaches balanced accuracy 0.566 (Holm p < 0.001) and
+  Hjorth 0.543. Plain accuracy still doesn't beat the majority class (0.566).
+- **Arousal:** no domain beats chance.
+- **Against Week 4:** AutoGluon doesn't beat the SVM/RF 4-class predictions collapsed to binary
+  (all differences within ±0.04). The ceiling is the features.
+- **Fine-tuning:** not done. The top families differ by < 0.01 on inner CV.
+- **Environment:** AutoGluon needs `pandas<2.4`, so pandas is pinned to 2.3.3. `load_all` output was
+  verified identical to pandas 3.0.5.
+- **4s set:** not modeled.
 
-Reproduce with: `python pipeline/modeling/run_all.py` (~55 min)
+Reproduce with: `python pipeline/modeling/run_all.py` (~3.1 h; resumable via `outputs/modeling/predictions/`)
 
 ## Rules for downstream code
 

@@ -1,4 +1,4 @@
-"""Run the Week 4 modeling stage (Tasks 1-2) on the 60s feature set."""
+"""Run the Week 4 modeling stage (Tasks 1-2): AutoGluon valence/arousal on the 60s feature set."""
 import task1_train
 import task2_evaluate
 from bcc.analysis import load_all
